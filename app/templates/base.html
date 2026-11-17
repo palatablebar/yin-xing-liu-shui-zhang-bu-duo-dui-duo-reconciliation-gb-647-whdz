@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}对账工作台{% endblock %} · ledgerbank</title>
+<link rel="stylesheet" href="/static/theme.css">
+<link rel="stylesheet" href="/static/layout.css">
+<link rel="stylesheet" href="/static/components.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">ledgerbank</a>
+  <nav class="tabs">
+    {% for name, href in nav %}<a href="{{ href }}" class="tab{% if href == current %} active{% endif %}">{{ name }}</a>{% endfor %}
+  </nav>
+  <div class="run-meta">
+    {% if run %}<span class="mono">{{ run.run_id }}</span><span class="mono">{{ run.created_at|localdt }}</span>
+    {% else %}<span>无批次</span>{% endif %}
+  </div>
+</header>
+<div id="flash" class="flash" hidden></div>
+{% block body %}{% endblock %}
+<script src="/static/app.js" defer></script>
+<script src="/static/table.js" defer></script>
+<script src="/static/diff.js" defer></script>
+</body>
+</html>

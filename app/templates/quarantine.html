@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}隔离区{% endblock %}
+{% block body %}
+<main class="page">
+  <header class="page-head">
+    <h1>隔离区</h1>
+    <span class="page-meta">{{ rows|length }} 条</span>
+    <a class="btn" href="/api/quarantine.csv">下载 CSV</a>
+  </header>
+  <section class="panel">
+    <h2>原因分布</h2>
+    <table class="grid compact" id="reason-table">
+      <thead><tr><th data-sort="text">原因码</th><th data-sort="text">原因</th><th class="num" data-sort="num">条数</th></tr></thead>
+      <tbody>
+      {% for item in distribution %}
+        <tr><td class="mono">{{ item.code }}</td><td>{{ item.label }}</td><td class="num mono">{{ item.count }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if not distribution %}<p class="empty">没有隔离行。</p>{% endif %}
+  </section>
+  <section class="panel">
+    <h2>隔离明细</h2>
+    <div class="table-wrap">
+      <table class="grid" id="quarantine-table">
+        <thead><tr><th>侧</th><th class="num">行号</th><th>业务号</th><th>账户</th><th class="num">金额原值</th><th>原因码</th><th>原因</th></tr></thead>
+        <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>{{ '银行' if row.side == 'bank' else '账簿' }}</td>
+            <td class="num mono">{{ row.row_no }}</td>
+            <td class="mono">{{ row.txn_no or '-' }}</td>
+            <td class="mono">{{ row.account or '-' }}</td>
+            <td class="num mono">{{ row.get('raw_amount', '') }}</td>
+            <td class="mono">{{ row.reason }}</td>
+            <td>{{ row.reason|reason_label }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% if not rows %}<p class="empty">没有隔离行。</p>{% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}

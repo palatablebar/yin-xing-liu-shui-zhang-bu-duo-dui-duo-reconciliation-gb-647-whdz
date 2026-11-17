@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}工作台{% endblock %}
+{% block body %}
+{% set c = reconciliation.counts if reconciliation else {} %}
+<section class="totalbar">
+  <span class="total"><b>银行</b><em>{{ c.get('bank_valid', 0) }}</em>笔</span>
+  <span class="total"><b>账簿</b><em>{{ c.get('ledger_valid', 0) }}</em>笔</span>
+  <span class="total"><b>匹配</b><em>{{ c.get('matched_groups', 0) }}</em>组</span>
+  <span class="total"><b>未匹配</b><em>{{ c.get('bank_unmatched_rows', 0) + c.get('ledger_unmatched_rows', 0) }}</em>笔</span>
+  <span class="total"><b>隔离</b><em>{{ c.get('bank_quarantine', 0) + c.get('ledger_quarantine', 0) }}</em>条</span>
+  <span class="total total-right"><b>差额</b><em>{% if reconciliation %}{{ reconciliation.totals.match_gap|money }}{% else %}0.00{% endif %}</em>元</span>
+</section>
+<main class="workbench">
+  <section class="side side-bank">
+    <header class="side-head">
+      <h1>银行流水</h1>
+      <span class="side-meta">{{ bank_rows|length }} 笔</span>
+    </header>
+    <div class="side-actions">
+      <button class="btn" data-action="demo">载入样例</button>
+      <button class="btn" data-action="candidates">生成候选</button>
+      <button class="btn" data-action="matches">求解匹配</button>
+      <label class="check"><input type="checkbox" id="only-diff">只看差异</label>
+    </div>
+    <form id="import-form" class="import-form" enctype="multipart/form-data">
+      <select name="side" aria-label="侧">
+        <option value="bank">银行</option>
+        <option value="ledger">账簿</option>
+      </select>
+      <input type="file" name="file" accept=".csv" aria-label="流水文件">
+      <button class="btn" type="submit">导入文件</button>
+    </form>
+    <div class="rules">
+      <span class="chip">容差 {{ contract.tolerance }} 元</span>
+      <span class="chip">窗口 {{ contract.window_days }} 天</span>
+      <span class="chip">子集 {{ contract.subset_max }} 笔</span>
+      <a class="chip chip-link" href="/api/contract">列定义</a>
+    </div>
+    <div class="table-wrap">
+      <table class="grid" id="bank-table">
+        <thead><tr><th>流水号</th><th>账户</th><th>时间</th><th>方向</th><th class="num">金额</th><th class="num">手续费</th><th>状态</th></tr></thead>
+        <tbody>
+        {% for row in bank_rows %}
+          <tr data-pair="{{ pairs.get(row.txn_no, '') }}" class="{% if row.txn_no not in pairs %}unmatched{% endif %}">
+            <td class="mono">{{ row.txn_no }}</td>
+            <td class="mono">{{ row.account }}</td>
+            <td class="mono">{{ row.posted_at|localdt }}</td>
+            <td>{{ '收' if row.direction > 0 else '付' }}</td>
+            <td class="num mono">{{ '+' if row.direction > 0 else '−' }}{{ row.amount|money }}</td>
+            <td class="num mono">{{ row.fee|money }}</td>
+            <td class="state">{% if row.txn_no in pairs %}已匹配{% else %}未匹配{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% if not bank_rows %}<p class="empty">{% if not run %}还没有批次。{% else %}没有流水。{% endif %}</p>{% endif %}
+    </div>
+  </section>
+  <section class="side side-ledger">
+    <header class="side-head">
+      <h1>账簿凭证</h1>
+      <span class="side-meta">{{ ledger_rows|length }} 笔</span>
+    </header>
+    <div class="side-actions">
+      <button class="btn" data-action="quarantine">查看隔离</button>
+      <a class="btn" href="/candidates">候选清单</a>
+      <a class="btn" href="/matches">匹配结果</a>
+    </div>
+    <div class="rules">
+      <span class="chip">账户 {{ contract.accounts|length }} 个</span>
+      <span class="chip">手续费不计入匹配</span>
+    </div>
+    <div class="table-wrap">
+      <table class="grid" id="ledger-table">
+        <thead><tr><th>凭证号</th><th>账户</th><th>时间</th><th>方向</th><th class="num">金额</th><th>状态</th></tr></thead>
+        <tbody>
+        {% for row in ledger_rows %}
+          <tr data-pair="{{ pairs.get(row.txn_no, '') }}" class="{% if row.txn_no not in pairs %}unmatched{% endif %}">
+            <td class="mono">{{ row.txn_no }}</td>
+            <td class="mono">{{ row.account }}</td>
+            <td class="mono">{{ row.posted_at|localdt }}</td>
+            <td>{{ '收' if row.direction > 0 else '付' }}</td>
+            <td class="num mono">{{ '+' if row.direction > 0 else '−' }}{{ row.amount|money }}</td>
+            <td class="state">{% if row.txn_no in pairs %}已匹配{% else %}未匹配{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% if not ledger_rows %}<p class="empty">{% if not run %}还没有批次。{% else %}没有凭证。{% endif %}</p>{% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}

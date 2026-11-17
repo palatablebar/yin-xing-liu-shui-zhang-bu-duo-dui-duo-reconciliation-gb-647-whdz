@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}匹配{% endblock %}
+{% block body %}
+<main class="page">
+  <header class="page-head">
+    <h1>匹配</h1>
+    <span class="page-meta">{{ groups|length }} 组</span>
+    <span class="page-meta">手续费 {{ fee_total|money }} 元</span>
+    <a class="btn" href="/batches">看批次</a>
+  </header>
+  <section class="panel">
+    <div class="table-wrap">
+      <table class="grid" id="match-table">
+        <thead><tr><th>层级</th><th>银行流水</th><th>账簿凭证</th><th class="num">银行金额</th><th class="num">账簿金额</th><th class="num">差额</th><th class="num">手续费分摊</th></tr></thead>
+        <tbody>
+        {% for group in groups %}
+          <tr>
+            <td>{{ group.tier|tier_label }}</td>
+            <td class="mono">{{ group.bank_ids|join(' ') }}</td>
+            <td class="mono">{{ group.ledger_ids|join(' ') }}</td>
+            <td class="num mono">{{ group.bank_sum|money }}</td>
+            <td class="num mono">{{ group.ledger_sum|money }}</td>
+            <td class="num mono">{{ group.diff|money }}</td>
+            <td class="num mono">{{ group.fee_alloc|money }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% if not groups %}<p class="empty">没有匹配组。</p>{% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}

@@ -1,0 +1,20 @@
+services:
+  app:
+    build: .
+    image: ledgerbank:local
+    environment:
+      LEDGERBANK_DB: /data/ledgerbank.sqlite
+      TZ: Asia/Shanghai
+    ports:
+      - "18206:8000"
+    volumes:
+      - ledgerbank-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://127.0.0.1:8000/api/health', timeout=2.0)"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
+
+volumes:
+  ledgerbank-data:

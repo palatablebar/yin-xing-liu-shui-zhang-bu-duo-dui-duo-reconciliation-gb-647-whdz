@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}批次{% endblock %}
+{% block body %}
+<main class="page">
+  <header class="page-head">
+    <h1>批次</h1>
+    <span class="page-meta">{{ batches|length }} 条</span>
+    <a class="btn" href="/api/export/manifest.json">清单 JSON</a>
+  </header>
+  {% if reconciliation %}
+  <section class="panel">
+    <h2>对账</h2>
+    <table class="grid compact" id="identity-table">
+      <thead><tr><th>名称</th><th class="num">左值</th><th class="num">右值</th><th>状态</th></tr></thead>
+      <tbody>
+      {% for item in reconciliation.identities %}
+        <tr>
+          <td>{{ item.label }}</td>
+          <td class="num mono">{% if item.unit == '元' %}{{ item.left|money }}{% else %}{{ item.left }}{% endif %}</td>
+          <td class="num mono">{% if item.unit == '元' %}{{ item.right|money }}{% else %}{{ item.right }}{% endif %}</td>
+          <td class="state">{% if item.balanced %}平衡{% else %}不平{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+  <section class="panel">
+    <h2>运行历史</h2>
+    <div class="table-wrap">
+      <table class="grid" id="batch-table">
+        <thead><tr><th>批次号</th><th>生成时间</th><th>状态</th><th class="num">银行</th><th class="num">账簿</th><th class="num">隔离</th></tr></thead>
+        <tbody>
+        {% for batch in batches %}
+          <tr>
+            <td class="mono">{{ batch.run_id }}</td>
+            <td class="mono">{{ batch.created_at|localdt }}</td>
+            <td class="state">{{ batch.status|status_label }}</td>
+            <td class="num mono">{{ batch.bank_valid }}</td>
+            <td class="num mono">{{ batch.ledger_valid }}</td>
+            <td class="num mono">{{ batch.bank_quarantine + batch.ledger_quarantine }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% if not batches %}<p class="empty">还没有批次。</p>{% endif %}
+    </div>
+  </section>
+  {% if manifest %}
+  <section class="panel">
+    <h2>运行清单</h2>
+    <dl class="manifest">
+      <dt>批次号</dt><dd class="mono">{{ manifest.run_id }}</dd>
+      <dt>银行摘要</dt><dd class="mono">{{ manifest.inputs.bank.sha256|shortsha }}</dd>
+      <dt>账簿摘要</dt><dd class="mono">{{ manifest.inputs.ledger.sha256|shortsha }}</dd>
+      <dt>规则版本</dt><dd class="mono">{{ manifest.rule_version }}</dd>
+      <dt>耗时</dt><dd class="mono">{{ manifest.duration_ms }} ms</dd>
+    </dl>
+  </section>
+  {% endif %}
+</main>
+{% endblock %}

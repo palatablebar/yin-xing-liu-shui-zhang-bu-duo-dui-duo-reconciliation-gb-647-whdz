@@ -1,0 +1,29 @@
+/* ledgerbank 对账工作台：靛青主色、浅色、密排、3px 圆角 */
+:root {
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --surface-2: #eef0f8;
+  --surface-3: #e3e6f2;
+  --ink: #191c31;
+  --ink-muted: #5c6080;
+  --ink-faint: #8b8fa9;
+  --line: #d7dbec;
+  --line-strong: #b3b9d6;
+  --accent: #3b3f8f;
+  --accent-ink: #ffffff;
+  --accent-soft: #e7e9f7;
+  --ok: #1f7a4d;
+  --warn: #96631a;
+  --bad: #a32b3a;
+  --info: #2f5f8f;
+  --font-ui: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-num: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  --font-doc: Georgia, "Songti SC", serif;
+  --radius: 3px;
+  --radius-sm: 2px;
+  --pad: 8px;
+  --gap: 10px;
+  --row-h: 27px;
+  --shadow: 0 1px 0 var(--line);
+  --sticky-top: 44px;
+}

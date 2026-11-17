@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}候选{% endblock %}
+{% block body %}
+<main class="page">
+  <header class="page-head">
+    <h1>候选</h1>
+    <span class="page-meta">{{ items|length }} 条</span>
+    <a class="btn" href="/matches">去匹配</a>
+  </header>
+  <section class="panel">
+    <h2>层级分布</h2>
+    <div class="chips">
+      {% for tier, name in tier_names.items() %}<span class="chip">{{ name }} {{ tiers.get(tier|string, 0) }}</span>{% endfor %}
+    </div>
+  </section>
+  <section class="panel">
+    <h2>候选清单</h2>
+    <div class="table-wrap">
+      <table class="grid" id="candidate-table">
+        <thead><tr><th data-sort="text">层级</th><th>银行流水</th><th>账簿凭证</th><th class="num" data-sort="num">差额</th><th class="num" data-sort="num">日期差</th></tr></thead>
+        <tbody>
+        {% for item in items %}
+          <tr>
+            <td>{{ item.tier|tier_label }}</td>
+            <td class="mono">{{ item.bank_ids|join(' ') }}</td>
+            <td class="mono">{{ item.ledger_ids|join(' ') }}</td>
+            <td class="num mono">{{ item.diff|money }}</td>
+            <td class="num mono">{{ item.day_gap }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% if not items %}<p class="empty">没有候选。</p>{% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}

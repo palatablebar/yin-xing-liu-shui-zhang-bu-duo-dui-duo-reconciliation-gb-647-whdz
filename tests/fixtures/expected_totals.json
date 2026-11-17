@@ -1,0 +1,31 @@
+{
+  "totals": {
+    "bank_gross": "-246279.51",
+    "bank_fee": "22.31",
+    "bank_total": "-246301.82",
+    "bank_matched": "-245929.26",
+    "bank_unmatched": "-350.25",
+    "ledger_total": "-10248167.41",
+    "ledger_matched": "-245929.27",
+    "ledger_unmatched": "-10002238.14",
+    "match_gap": "0.01",
+    "fee_alloc_total": "22.31",
+    "fee_actual_total": "22.31"
+  },
+  "counts": {
+    "bank_valid": 22,
+    "bank_matched_rows": 15,
+    "bank_unmatched_rows": 7,
+    "ledger_valid": 19,
+    "ledger_matched_rows": 14,
+    "ledger_unmatched_rows": 5,
+    "matched_groups": 11,
+    "matched_tier": {
+      "1": 7,
+      "2": 2,
+      "3": 2
+    },
+    "bank_quarantine": 6,
+    "ledger_quarantine": 2
+  }
+}

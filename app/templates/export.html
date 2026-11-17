@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}导出{% endblock %}
+{% block body %}
+<main class="page">
+  <header class="page-head">
+    <h1>导出</h1>
+    <span class="page-meta">{{ summary.run_id or '无批次' }}</span>
+  </header>
+  <section class="panel">
+    <h2>文件</h2>
+    <div class="links">
+      <a class="btn" href="/api/export/report.csv">报告 CSV</a>
+      <a class="btn" href="/api/export/manifest.json">运行清单</a>
+      <a class="btn" href="/api/quarantine.csv">隔离 CSV</a>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>合计</h2>
+    <table class="grid compact" id="export-table">
+      <thead><tr><th>名称</th><th class="num">金额</th></tr></thead>
+      <tbody>
+      {% for item in total_rows %}
+        <tr><td>{{ item.label }}</td><td class="num mono">{{ item.value|money }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if not total_rows %}<p class="empty">还没有批次。</p>{% endif %}
+  </section>
+</main>
+{% endblock %}
