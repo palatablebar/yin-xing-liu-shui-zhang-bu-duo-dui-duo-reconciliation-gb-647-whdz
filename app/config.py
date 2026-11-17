@@ -5,13 +5,23 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from pathlib import Path
 
 RULE_VERSION = "2026.11.1"
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BASE_DIR.parent
+
+# 口径升级只允许改这些匹配参数；规则版本与参数共同决定 run_id。
+# 时区影响采信阶段的日期解析，升级不重读源文件，因此不在此列。
+CALIBER_KEYS = ("tolerance", "window_days", "subset_max", "fee_quantum")
+CALIBER_LABELS = {
+    "tolerance": "金额容差",
+    "window_days": "日期窗口",
+    "subset_max": "子集上限",
+    "fee_quantum": "手续费精度",
+}
 
 # 编码回退链：先按带 BOM 的 UTF-8 解，再按 UTF-8，最后按 GB18030。
 ENCODING_CHAIN = ("utf-8-sig", "utf-8", "gb18030")
@@ -71,3 +81,34 @@ class Settings:
             "fee_quantum": str(self.fee_quantum),
             "timezone": self.tz_name,
         }
+
+    def with_caliber(self, rule_version: str, tolerance=None, window_days=None,
+                     subset_max=None, fee_quantum=None, tz_name=None) -> "Settings":
+        """派生一份新口径的配置；未给出的项沿用当前值。"""
+        return replace(
+            self,
+            rule_version=rule_version or self.rule_version,
+            tolerance=Decimal(str(tolerance)) if tolerance is not None else self.tolerance,
+            window_days=int(window_days) if window_days is not None else self.window_days,
+            subset_max=int(subset_max) if subset_max is not None else self.subset_max,
+            fee_quantum=(
+                Decimal(str(fee_quantum)) if fee_quantum is not None else self.fee_quantum
+            ),
+            tz_name=tz_name or self.tz_name,
+        )
+
+    def for_run(self, run: dict | None) -> "Settings":
+        """按批次自己记录的规则版本与参数派生配置。
+
+        页面、导出与差异复算都走这一处，保证同一批次在页面和文件里是同一版。
+        """
+        if not run:
+            return self
+        params = run.get("params") or {}
+        return self.with_caliber(
+            run.get("rule_version") or self.rule_version,
+            tolerance=params.get("tolerance"),
+            window_days=params.get("window_days"),
+            subset_max=params.get("subset_max"),
+            fee_quantum=params.get("fee_quantum"),
+        )

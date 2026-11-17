@@ -1,7 +1,7 @@
-"""应用装配：配置 → 存储 → 页面 → 七个功能模块路由。"""
+"""应用装配：配置 → 存储 → 页面 → 八个功能模块路由。"""
 from __future__ import annotations
 
-from fastapi import FastAPI, Request
+from fastapi import Body, FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -14,9 +14,10 @@ from .modules.m4_candidates import handler as m4_handler
 from .modules.m5_matching import handler as m5_handler
 from .modules.m6_diff import handler as m6_handler
 from .modules.m7_export import handler as m7_handler
+from .modules.m8_upgrade import handler as m8_handler
 
 MODULES = (m1_handler, m2_handler, m3_handler, m4_handler, m5_handler,
-           m6_handler, m7_handler)
+           m6_handler, m7_handler, m8_handler)
 
 
 def create_app(settings: config.Settings | None = None) -> FastAPI:
@@ -38,22 +39,32 @@ def create_app(settings: config.Settings | None = None) -> FastAPI:
     def health(request: Request) -> dict:
         store = request.app.state.store
         run = store.latest_run()
+        active_version = store.get_meta("active_rule_version", settings.rule_version)
         return {
             "status": "ok",
             "rule_version": settings.rule_version,
+            "active_rule_version": active_version,
             "run_id": run["run_id"] if run else None,
             "status_of_run": run["status"] if run else "empty",
+            "review_status": run["review_status"] if run else None,
         }
 
     @app.post("/api/demo/run")
     def demo(request: Request) -> dict:
         return pipeline.run_demo(request.app.state.settings, request.app.state.store)
 
+    @app.post("/api/runs/{run_id}/review")
+    def review(request: Request, run_id: str, payload: dict | None = Body(default=None)):
+        store = request.app.state.store
+        run = store.mark_reviewed(run_id, (payload or {}).get("reviewed_by", ""))
+        return {"run_id": run["run_id"], "review_status": run["review_status"],
+                "reviewed_at": run["reviewed_at"], "reviewed_by": run["reviewed_by"]}
+
     def _head_ok() -> Response:
         return Response(status_code=200, media_type="text/html; charset=utf-8")
 
     for path in ("/", "/quarantine", "/candidates", "/matches", "/batches", "/export",
-                 "/api/health"):
+                 "/upgrade", "/api/health"):
         app.add_api_route(path, _head_ok, methods=["HEAD"], include_in_schema=False)
 
     @app.exception_handler(ValueError)

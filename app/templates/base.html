@@ -15,7 +15,7 @@
     {% for name, href in nav %}<a href="{{ href }}" class="tab{% if href == current %} active{% endif %}">{{ name }}</a>{% endfor %}
   </nav>
   <div class="run-meta">
-    {% if run %}<span class="mono">{{ run.run_id }}</span><span class="mono">{{ run.created_at|localdt }}</span>
+    {% if run %}<span class="mono">{{ run.run_id }}</span><span class="mono">规则 {{ run.rule_version }}</span><span class="mono">{{ run.review_status|review_label }}</span><span class="mono">{{ run.created_at|localdt }}</span>
     {% else %}<span>无批次</span>{% endif %}
   </div>
 </header>

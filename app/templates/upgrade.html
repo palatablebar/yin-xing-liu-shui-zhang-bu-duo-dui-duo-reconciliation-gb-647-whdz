@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}口径升级{% endblock %}
+{% block body %}
+<main class="page">
+  <header class="page-head">
+    <h1>口径升级</h1>
+    <span class="page-meta">{{ upgrades|length }} 次升级</span>
+    {% if run %}<span class="page-meta">当前批次 {{ run.run_id }}</span>{% endif %}
+    <span class="page-meta">当前规则 {{ run.rule_version if run else settings.rule_version }}</span>
+  </header>
+
+  <section class="panel">
+    <h2>操作</h2>
+    <form id="upgrade-form" class="import-form">
+      <input name="rule_version" value="2026.11.2" aria-label="目标规则版本">
+      <input name="tolerance" value="0.02" aria-label="容差">
+      <input name="window_days" value="3" aria-label="日期窗口">
+      <input name="subset_max" value="4" aria-label="子集上限">
+      <button class="btn" type="submit" data-mode="impact">计算影响</button>
+      <button class="btn" type="submit" data-mode="apply">执行升级</button>
+    </form>
+    {% if run %}
+    <div class="links">
+      <span class="chip">当前批次 {{ run.review_status|review_label }}</span>
+      {% if run.review_status != 'reviewed' %}
+      <button class="btn" data-action="review">标记当前批次已复核</button>
+      {% endif %}
+      <a class="chip chip-link" href="/batches">看批次历史</a>
+    </div>
+    {% endif %}
+  </section>
+
+  {% if impact %}
+  {% set summary = impact.summary %}
+  <section class="panel">
+    <h2>当前升级影响</h2>
+    <dl class="manifest">
+      <dt>升级编号</dt><dd class="mono">{{ impact.upgrade_id }}</dd>
+      <dt>目标规则</dt><dd class="mono">{{ impact.target.rule_version }}</dd>
+      <dt>生成时间</dt><dd class="mono">{{ impact.created_at|localdt }}</dd>
+      <dt>批次总数</dt><dd class="mono">{{ summary.batches_total }}</dd>
+      <dt>按新口径重算</dt><dd class="mono">{{ summary.batches_rerun }}</dd>
+      <dt>保持已复核</dt><dd class="mono">{{ summary.batches_kept_reviewed }}</dd>
+      <dt>已在新口径</dt><dd class="mono">{{ summary.batches_already_current }}</dd>
+      <dt>需重新复核</dt><dd class="mono">{{ summary.re_review_required }} 批</dd>
+      <dt>口径变化</dt><dd class="mono">{% for item in impact.rule_changes %}{{ item.label }} {{ item.before }} → {{ item.after }}{% if not loop.last %}；{% endif %}{% else %}无{% endfor %}</dd>
+      <dt>可发布批次</dt><dd class="mono">{{ summary.publishable_batches }} 批</dd>
+      <dt>暂缓发布</dt><dd class="mono">{{ summary.held_batches }} 批</dd>
+    </dl>
+  </section>
+
+  <section class="panel">
+    <h2>逐批处理</h2>
+    <div class="table-wrap">
+      <table class="grid" id="upgrade-batch-table">
+        <thead><tr><th>原批次</th><th>原规则</th><th>处理</th><th>是否重新复核</th><th>新批次</th><th>新规则</th><th>匹配组</th><th>可发布</th></tr></thead>
+        <tbody>
+        {% for item in impact.batches %}
+          <tr>
+            <td class="mono">{{ item.source_run_id }}</td>
+            <td class="mono">{{ item.source_rule_version }}</td>
+            <td>{{ item.decision_label }}</td>
+            <td>{{ item.re_review_label }}</td>
+            <td class="mono">{{ item.new_run_id }}</td>
+            <td class="mono">{{ item.new_rule_version }}</td>
+            <td class="num mono">{{ item.matches.counts.before }} → {{ item.matches.counts.after }}</td>
+            <td>{% if item.publishable %}可发布{% else %}否：{{ item.publish_reason }}{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>受影响匹配与差异</h2>
+    <div class="table-wrap">
+      <table class="grid" id="upgrade-impact-table">
+        <thead><tr><th>原批次</th><th class="num">新增匹配</th><th class="num">移除匹配</th><th class="num">变动匹配</th><th class="num">新增差异</th><th class="num">消失差异</th><th>发布版本</th></tr></thead>
+        <tbody>
+        {% for item in impact.batches %}
+          <tr>
+            <td class="mono">{{ item.source_run_id }}</td>
+            <td class="num mono">{{ item.matches.counts.added }}</td>
+            <td class="num mono">{{ item.matches.counts.removed }}</td>
+            <td class="num mono">{{ item.matches.counts.changed }}</td>
+            <td class="num mono">{{ item.differences.counts.added }}</td>
+            <td class="num mono">{{ item.differences.counts.removed }}</td>
+            <td class="mono">{{ item.publish_version }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {% if impact.publishable_scope %}
+  <section class="panel">
+    <h2>可发布范围</h2>
+    <div class="table-wrap">
+      <table class="grid compact">
+        <thead><tr><th>批次</th><th>来源批次</th><th>规则版本</th><th class="num">匹配组</th></tr></thead>
+        <tbody>
+        {% for item in impact.publishable_scope %}
+          <tr>
+            <td class="mono">{{ item.run_id }}</td>
+            <td class="mono">{{ item.source_run_id }}</td>
+            <td class="mono">{{ item.rule_version }}</td>
+            <td class="num mono">{{ item.matches }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if impact.retained_scope %}
+  <section class="panel">
+    <h2>保持原结论</h2>
+    <div class="table-wrap">
+      <table class="grid compact">
+        <thead><tr><th>批次</th><th>规则版本</th><th>复核状态</th><th>说明</th></tr></thead>
+        <tbody>
+        {% for item in impact.retained_scope %}
+          <tr>
+            <td class="mono">{{ item.run_id }}</td>
+            <td class="mono">{{ item.rule_version }}</td>
+            <td>{{ item.review_status|review_label }}</td>
+            <td>{{ item.note }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+  {% elif run %}
+  <section class="panel">
+    <h2>当前批次</h2>
+    <p class="empty">当前批次未经过口径升级；首次升级后这里会展示影响结果。</p>
+  </section>
+  {% endif %}
+
+  <section class="panel">
+    <h2>升级历史</h2>
+    <div class="table-wrap">
+      <table class="grid" id="upgrade-history-table">
+        <thead><tr><th>升级编号</th><th>生成时间</th><th>目标规则</th><th>来源批次</th><th class="num">重算批次</th><th class="num">可发布</th></tr></thead>
+        <tbody>
+        {% for item in upgrades %}
+          <tr>
+            <td class="mono">{{ item.upgrade_id }}</td>
+            <td class="mono">{{ item.created_at|localdt }}</td>
+            <td class="mono">{{ item.target_rule_version }}</td>
+            <td class="mono">{{ item.source_run_ids|join(' ') }}</td>
+            <td class="num mono">{{ item.impact.summary.batches_rerun }}</td>
+            <td class="num mono">{{ item.impact.summary.publishable_batches }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% if not upgrades %}<p class="empty">还没有升级记录。</p>{% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}

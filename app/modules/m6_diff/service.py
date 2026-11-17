@@ -17,8 +17,12 @@ def payload(store, run: dict | None, settings) -> dict:
         }
     records = store.records(run["run_id"])
     matches = store.matches(run["run_id"])
-    result = differences.reconcile(records, matches, settings)
+    effective = settings.for_run(run)
+    result = differences.reconcile(records, matches, effective)
     result["run_id"] = run["run_id"]
+    result["rule_version"] = run.get("rule_version", "")
+    result["params"] = run.get("params", {})
+    result["review_status"] = run.get("review_status", "")
     return result
 
 

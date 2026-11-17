@@ -34,6 +34,20 @@ async function runAction(name) {
     window.location.href = "/quarantine";
     return;
   }
+  if (name === "review") {
+    const meta = document.querySelector(".run-meta .mono");
+    if (!meta) return;
+    setBusy(true);
+    try {
+      await post("/api/runs/" + meta.textContent.trim() + "/review", null);
+      window.location.reload();
+    } catch (error) {
+      flash(error.message);
+    } finally {
+      setBusy(false);
+    }
+    return;
+  }
   const urls = {
     demo: "/api/demo/run",
     candidates: "/api/candidates",
@@ -76,4 +90,45 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  const upgradeForm = document.querySelector("#upgrade-form");
+  if (upgradeForm) {
+    upgradeForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const mode = event.submitter ? event.submitter.dataset.mode : "impact";
+      const fields = new FormData(upgradeForm);
+      const body = {};
+      fields.forEach((value, key) => {
+        if (value !== "") body[key] = value;
+      });
+      const url = mode === "apply" ? "/api/upgrades" : "/api/upgrades/impact";
+      try {
+        const data = await postJson(url, body);
+        const summary = data.summary || {};
+        flash(
+          (mode === "apply" ? "升级已落库：" : "影响：" ) +
+          "重算 " + summary.batches_rerun + " 批，保持已复核 " +
+          summary.batches_kept_reviewed + " 批，可发布 " +
+          summary.publishable_batches + " 批",
+          "ok"
+        );
+        window.location.href = "/upgrade";
+      } catch (error) {
+        flash(error.message);
+      }
+    });
+  }
 });
+
+async function postJson(url, body) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || data.detail || "请求失败");
+  }
+  return data;
+}

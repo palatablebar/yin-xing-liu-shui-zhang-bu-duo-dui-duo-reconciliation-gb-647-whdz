@@ -5,12 +5,14 @@
   <header class="page-head">
     <h1>导出</h1>
     <span class="page-meta">{{ summary.run_id or '无批次' }}</span>
+    {% if summary.rule_version %}<span class="page-meta">规则 {{ summary.rule_version }}</span>{% endif %}
+    {% if summary.review_status %}<span class="page-meta">{{ summary.review_status|review_label }}</span>{% endif %}
   </header>
   <section class="panel">
     <h2>文件</h2>
     <div class="links">
-      <a class="btn" href="/api/export/report.csv">报告 CSV</a>
-      <a class="btn" href="/api/export/manifest.json">运行清单</a>
+      <a class="btn" href="/api/export/report.csv{% if summary.run_id %}?run_id={{ summary.run_id }}{% endif %}">报告 CSV</a>
+      <a class="btn" href="/api/export/manifest.json{% if summary.run_id %}?run_id={{ summary.run_id }}{% endif %}">运行清单</a>
       <a class="btn" href="/api/quarantine.csv">隔离 CSV</a>
     </div>
   </section>

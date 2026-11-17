@@ -4,6 +4,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from ...errors import DomainError
+from ..m8_upgrade import service as upgrade_service
 from . import solve
 
 
@@ -35,7 +36,7 @@ def run_matching(store, run: dict | None, settings) -> dict:
     if not candidates:
         raise DomainError("E_NO_CANDIDATES", "还没有候选", 409)
     records = store.records(run["run_id"])
-    groups = solve.solve(candidates, records, settings)
+    groups = solve.solve(candidates, records, upgrade_service.active_settings(store, settings))
     store.replace_matches(run["run_id"], groups)
     store.set_status(run["run_id"], "matched")
     return payload(store, store.get_run(run["run_id"]))

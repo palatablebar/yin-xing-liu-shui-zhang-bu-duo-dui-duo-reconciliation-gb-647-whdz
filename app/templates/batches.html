@@ -29,13 +29,16 @@
     <h2>运行历史</h2>
     <div class="table-wrap">
       <table class="grid" id="batch-table">
-        <thead><tr><th>批次号</th><th>生成时间</th><th>状态</th><th class="num">银行</th><th class="num">账簿</th><th class="num">隔离</th></tr></thead>
+        <thead><tr><th>批次号</th><th>生成时间</th><th>状态</th><th>规则版本</th><th>复核</th><th>替代</th><th class="num">银行</th><th class="num">账簿</th><th class="num">隔离</th></tr></thead>
         <tbody>
         {% for batch in batches %}
           <tr>
             <td class="mono">{{ batch.run_id }}</td>
             <td class="mono">{{ batch.created_at|localdt }}</td>
             <td class="state">{{ batch.status|status_label }}</td>
+            <td class="mono">{{ batch.rule_version }}</td>
+            <td>{{ batch.review_status|review_label }}</td>
+            <td class="mono">{% if batch.superseded_by %}→ {{ batch.superseded_by }}{% elif batch.supersedes %}替代 {{ batch.supersedes }}{% else %}-{% endif %}</td>
             <td class="num mono">{{ batch.bank_valid }}</td>
             <td class="num mono">{{ batch.ledger_valid }}</td>
             <td class="num mono">{{ batch.bank_quarantine + batch.ledger_quarantine }}</td>

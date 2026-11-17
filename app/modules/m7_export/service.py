@@ -7,14 +7,19 @@ from . import csv_out, manifest_out
 
 
 def _reconciliation(store, run: dict, settings) -> dict:
-    return differences.reconcile(store.records(run["run_id"]), store.matches(run["run_id"]), settings)
+    effective = settings.for_run(run)
+    return differences.reconcile(
+        store.records(run["run_id"]), store.matches(run["run_id"]), effective
+    )
 
 
 def report(store, run: dict | None, settings) -> str:
     if not run:
         raise DomainError("E_NO_RUN", "还没有批次", 404)
     result = _reconciliation(store, run, settings)
-    return csv_out.report_text(store.records(run["run_id"]), store.matches(run["run_id"]), result)
+    return csv_out.report_text(
+        store.records(run["run_id"]), store.matches(run["run_id"]), result, run
+    )
 
 
 def manifest(store, run: dict | None, settings) -> str:
@@ -30,6 +35,8 @@ def summary(store, run: dict | None, settings) -> dict:
     result = _reconciliation(store, run, settings)
     return {
         "run_id": run["run_id"],
+        "rule_version": run.get("rule_version", ""),
+        "review_status": run.get("review_status", ""),
         "counts": result["counts"],
         "totals": {key: format(value, "f") for key, value in result["totals"].items()},
     }

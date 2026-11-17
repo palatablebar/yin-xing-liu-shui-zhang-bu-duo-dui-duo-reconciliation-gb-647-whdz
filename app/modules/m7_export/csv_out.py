@@ -21,11 +21,19 @@ def _money(value) -> str:
     return str(value)
 
 
-def report_text(records: list[dict], matches: list[dict], reconciliation: dict) -> str:
+def report_text(records: list[dict], matches: list[dict], reconciliation: dict,
+                run: dict | None = None) -> str:
     totals = reconciliation["totals"]
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow(HEADER)
+    if run:
+        # 版本行让页面与导出可逐字比对；同一批次永远是同一规则版本。
+        writer.writerow([
+            "版本", run.get("run_id", ""), run.get("rule_version", ""),
+            "已复核" if run.get("review_status") == "reviewed" else "待关账", "", "", "", "", "",
+            "", "", "",
+        ])
 
     for key, label in (
         ("bank_total", "银行合计"),

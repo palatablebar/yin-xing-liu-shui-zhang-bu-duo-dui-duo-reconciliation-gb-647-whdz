@@ -70,4 +70,10 @@ def build_manifest(run: dict) -> dict:
         "input_states": run.get("input_states", {}),
         "duration_ms": run.get("duration_ms", 0),
         "status": run.get("status", ""),
+        "review_status": run.get("review_status", "pending_close"),
+        "reviewed_at": run.get("reviewed_at", ""),
+        "reviewed_by": run.get("reviewed_by", ""),
+        "supersedes": run.get("supersedes", ""),
+        "superseded_by": run.get("superseded_by", ""),
+        "active_rule_version": run.get("rule_version", ""),
     }

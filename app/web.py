@@ -1,4 +1,4 @@
-"""页面装配：模板环境、格式化过滤器、六个页面的上下文。"""
+"""页面装配：模板环境、格式化过滤器、七个页面的上下文。"""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -10,11 +10,13 @@ from fastapi.templating import Jinja2Templates
 
 from . import reasons
 from .config import BASE_DIR
+from .errors import DomainError
 from .modules.m2_contract import service as contract_service
 from .modules.m5_matching.subset import TIER_NAMES
 from .modules.m6_diff import differences as differences_mod
 from .modules.m6_diff import history as history_mod
 from .modules.m7_export import service as export_service
+from .modules.m8_upgrade import service as upgrade_service
 
 TEMPLATE_DIR = BASE_DIR / "templates"
 STATIC_DIR = BASE_DIR / "static"
@@ -27,6 +29,7 @@ NAV = (
     ("匹配", "/matches"),
     ("批次", "/batches"),
     ("导出", "/export"),
+    ("口径升级", "/upgrade"),
 )
 
 
@@ -87,6 +90,11 @@ STATUS_LABELS = {
     "empty": "空批次",
 }
 
+REVIEW_LABELS = {
+    "pending_close": "待关账",
+    "reviewed": "已复核",
+}
+
 TOTAL_LABELS = {
     "bank_gross": "银行发生额",
     "bank_fee": "手续费",
@@ -107,6 +115,10 @@ def status_label(value) -> str:
     return STATUS_LABELS.get(text, reasons.label(text) if text in reasons.REASONS else text)
 
 
+def review_label(value) -> str:
+    return REVIEW_LABELS.get(str(value or ""), str(value or ""))
+
+
 def setup(app: FastAPI) -> None:
     templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
     templates.env.filters["money"] = money
@@ -116,28 +128,43 @@ def setup(app: FastAPI) -> None:
     templates.env.filters["reason_label"] = reason_label
     templates.env.filters["tier_label"] = tier_label
     templates.env.filters["status_label"] = status_label
+    templates.env.filters["review_label"] = review_label
     app.state.templates = templates
 
     def base(request: Request, title: str, current: str) -> dict:
         store = request.app.state.store
+        settings = request.app.state.settings
+        run = store.latest_run()
         return {
             "request": request,
             "title": title,
             "current": current,
             "nav": NAV,
-            "run": store.latest_run(),
-            "settings": request.app.state.settings,
+            "run": run,
+            "settings": settings,
+            "run_settings": settings.for_run(run),
         }
 
     def render(request: Request, template: str, context: dict):
         return templates.TemplateResponse(request, template, context)
 
+    def pick_run(store, requested: str | None):
+        """指定批次优先，否则用当前批次；找不到时退回当前批次。"""
+        if requested:
+            run = store.get_run(requested)
+            if run is None:
+                raise DomainError("E_NO_RUN", "批次不存在", 404)
+            return run
+        return store.latest_run()
+
     @app.get("/")
-    def index(request: Request):
+    def index(request: Request, run_id: str | None = None):
         store = request.app.state.store
-        settings = request.app.state.settings
         context = base(request, "工作台", "/")
-        run = context["run"]
+        run = pick_run(store, run_id)
+        settings = request.app.state.settings.for_run(run)
+        context["run"] = run
+        context["run_settings"] = settings
         records = store.records(run["run_id"]) if run else []
         matches = store.matches(run["run_id"]) if run else []
         bank_rows = [row for row in records if row["side"] == "bank" and row["status"] == "valid"]
@@ -162,10 +189,11 @@ def setup(app: FastAPI) -> None:
         return render(request, "index.html", context)
 
     @app.get("/quarantine")
-    def quarantine(request: Request):
+    def quarantine(request: Request, run_id: str | None = None):
         store = request.app.state.store
         context = base(request, "隔离区", "/quarantine")
-        run = context["run"]
+        run = pick_run(store, run_id)
+        context["run"] = run
         records = store.records(run["run_id"]) if run else []
         context.update({
             "rows": [row for row in records if row["status"] == "quarantine"],
@@ -176,10 +204,11 @@ def setup(app: FastAPI) -> None:
         return render(request, "quarantine.html", context)
 
     @app.get("/candidates")
-    def candidates(request: Request):
+    def candidates(request: Request, run_id: str | None = None):
         store = request.app.state.store
         context = base(request, "候选", "/candidates")
-        run = context["run"]
+        run = pick_run(store, run_id)
+        context["run"] = run
         items = store.candidates(run["run_id"]) if run else []
         tiers: dict[str, int] = {}
         for item in items:
@@ -188,10 +217,11 @@ def setup(app: FastAPI) -> None:
         return render(request, "candidates.html", context)
 
     @app.get("/matches")
-    def matches(request: Request):
+    def matches(request: Request, run_id: str | None = None):
         store = request.app.state.store
         context = base(request, "匹配", "/matches")
-        run = context["run"]
+        run = pick_run(store, run_id)
+        context["run"] = run
         groups = store.matches(run["run_id"]) if run else []
         fee_total = sum((Decimal(group["fee_alloc"]) for group in groups), Decimal("0.00"))
         context.update({
@@ -202,11 +232,13 @@ def setup(app: FastAPI) -> None:
         return render(request, "matches.html", context)
 
     @app.get("/batches")
-    def batches(request: Request):
+    def batches(request: Request, run_id: str | None = None):
         store = request.app.state.store
-        settings = request.app.state.settings
         context = base(request, "批次", "/batches")
-        run = context["run"]
+        run = pick_run(store, run_id)
+        settings = request.app.state.settings.for_run(run)
+        context["run"] = run
+        context["run_settings"] = settings
         batches_list = history_mod.batches(store, 12)
         reconciliation = None
         manifest = None
@@ -223,11 +255,13 @@ def setup(app: FastAPI) -> None:
         return render(request, "batches.html", context)
 
     @app.get("/export")
-    def export(request: Request):
+    def export(request: Request, run_id: str | None = None):
         store = request.app.state.store
-        settings = request.app.state.settings
         context = base(request, "导出", "/export")
-        run = context["run"]
+        run = pick_run(store, run_id)
+        settings = request.app.state.settings.for_run(run)
+        context["run"] = run
+        context["run_settings"] = settings
         summary = export_service.summary(store, run, settings)
         total_rows = [
             {"label": TOTAL_LABELS.get(key, key), "value": value}
@@ -235,3 +269,19 @@ def setup(app: FastAPI) -> None:
         ]
         context.update({"summary": summary, "total_rows": total_rows})
         return render(request, "export.html", context)
+
+    @app.get("/upgrade")
+    def upgrade(request: Request, run_id: str | None = None):
+        store = request.app.state.store
+        context = base(request, "口径升级", "/upgrade")
+        run = pick_run(store, run_id)
+        context["run"] = run
+        current = upgrade_service.report(store, run)
+        context.update({
+            "upgrades": store.list_upgrades(12),
+            "current": current,
+            "upgrade": current.get("upgrade"),
+            "impact": current.get("upgrade", {}).get("impact") if current.get("upgrade") else None,
+            "review_status": run["review_status"] if run else "",
+        })
+        return render(request, "upgrade.html", context)

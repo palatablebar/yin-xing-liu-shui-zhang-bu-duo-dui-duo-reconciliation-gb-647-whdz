@@ -17,6 +17,7 @@ from .modules.m3_quality import rules as quality_rules
 from .modules.m4_candidates import candidate as candidate_mod
 from .modules.m5_matching import solve as solve_mod
 from .modules.m6_diff import differences as differences_mod
+from .modules.m8_upgrade import service as upgrade_service
 
 DEFAULT_BANK = "bank_statement_dirty.csv"
 DEFAULT_LEDGER = "ledger_book_dirty.csv"
@@ -108,6 +109,7 @@ def _empty_meta() -> dict:
 
 def run_demo(settings, store, bank_name: str = DEFAULT_BANK,
              ledger_name: str = DEFAULT_LEDGER) -> dict:
+    settings = upgrade_service.active_settings(store, settings)
     started = time.monotonic()
     bank_file, bank_raw = m1_service.resolve_sample(settings, bank_name)
     ledger_file, ledger_raw = m1_service.resolve_sample(settings, ledger_name)
@@ -126,6 +128,7 @@ def run_demo(settings, store, bank_name: str = DEFAULT_BANK,
 
 
 def import_side(settings, store, side: str, filename: str, raw: bytes) -> dict:
+    settings = upgrade_service.active_settings(store, settings)
     started = time.monotonic()
     parsed, records = _parse(settings, side, filename, raw)
     parsed_bytes = len(raw)
